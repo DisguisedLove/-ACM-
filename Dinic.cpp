@@ -1,111 +1,82 @@
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <cmath>
-#include <cctype>
-#include <string>
-#include <cstring>
-#include <algorithm>
-#include <stack>
-#include <queue>
-#include <set>
-#include <map>
-#include <ctime>
-#include <vector>
-#include <fstream>
-#include <list>
-#include <iomanip>
-#include <cassert>
-#include <numeric>
+#include <bits/stdc++.h>
 using namespace std;
-typedef long long ll;
-typedef unsigned long long ull;
+using ll = long long;
 
-const int INF = 0x3f3f3f3f;
-//#define LOCAL
+const int V = 1010;
+const int E = 101000;
+template<typename T>
+struct FlowGraph {
+	int s, t, vtot;
+	int head[V], etot;
+	int dis[V], cur[V];
+	struct edge {
+		int v, nxt;
+		T f;
+	} e[E * 2];
+	void addedge(int u,int v, T f){
+		e[etot]= {v, head[u], f}; head[u] = etot++;
+		e[etot]= {u, head[v], 0}; head[v] = etot++;
+	}
 
-ll powmod(ll a, ll b, ll mod) {ll res=1;a%=mod;
-assert(b>=0);for(;b;b>>=1){if(b&1)res=res*a%mod;
-a=a*a%mod;};return res;}
-ll gcd(ll a, ll b) {return b?gcd(b, a%b):a;}
-// head 
-
-const int N = 1e4 + 10, M = 2e5 + 10;
-
-int e[M], ne[M], f[M], h[M], idx;
-int d[N], cur[N], n, m, S, T;
-
-void add(int u, int v, int w) {
-	f[idx] = w, e[idx] = v, ne[idx] = h[u], h[u] = idx++;
-	f[idx] = 0, e[idx] = u, ne[idx] = h[v], h[v] = idx++;
-}
-
-bool bfs() {
-	memset(d, -1, sizeof d);
-
-	d[S] = 0; cur[S] = h[S];
-	queue<int> q;
-	q.push(S);
-
-	while (!q.empty()) {
-		int u = q.front(); q.pop();
-		for (int i = h[u]; ~i; i = ne[i]) {
-			int v = e[i];
-
-			if (d[v] == -1 && f[i]) {
-				d[v] = d[u] + 1;
-				cur[v] = h[v];
-				if (v == T) return true;
-				q.push(v);
+	bool bfs() {
+		for (int i = 1; i <= vtot; i++) {
+			dis[i] = 0;
+			cur[i] = head[i];
+		}
+		queue<int> q;
+		q.push(s); dis[s] = 1;
+		while (!q.empty()) {
+			int u = q.front(); q.pop();
+			for (int i = head[u]; ~i; i = e[i].nxt) {
+				if (e[i].f && !dis[e[i].v]) {
+					int v = e[i].v;
+					dis[v] = dis[u] + 1;
+					if (v == t) return true;
+					q.push(v);
+				}
 			}
 		}
+		return false;
 	}
 
-	return false;
-}
-
-int find(int u, int limit) {
-
-	if (u == T) return limit;
-	int flow = 0;
-
-	for (int i = cur[u]; ~i && flow < limit; i = ne[i]) {
-		cur[u] = i;
-		int v = e[i];
-
-		if (d[v] == d[u] + 1 && f[i]) {
-			int t = find(v, min(f[i], limit - flow));
-			if (!t) d[v] = -1;
-			f[i] -= t, f[i ^ 1] += t, flow += t;
-		}
+	T dfs(int u, T m) {
+		if (u == t) return m;
+		T flow = 0;
+		for (int i = cur[u]; ~i; cur[u] = i = e[i].nxt)
+			if (e[i].f && dis[e[i].v] == dis[u] + 1) {
+				T f = dfs(e[i].v, min(m, e[i].f));
+				e[i].f -= f;
+				e[i ^ 1].f += f;
+				m -= f;
+				flow += f;
+				if (!m) break;
+			}
+		if (!flow) dis[u] = -1;
+		return flow;
 	}
+	T dinic(){
+		T flow=0;
+		while (bfs()) flow += dfs(s, numeric_limits<T>::max());
+		return flow;
+	}
+	void init(int s_, int t_, int vtot_) {
+		s = s_;
+		t = t_;
+		vtot = vtot_;
+		etot = 0;
+		for (int i = 1; i <= vtot; i++) head[i] = -1;
+	}
+};
 
-	return flow;
-}
-
-int dinic() {
-	int r = 0, flow;
-	while (bfs()) if ((flow = find(S, INF)) > 0) r += flow;
-	return r;
-}
-
+FlowGraph<ll> g;
+int n, m, s, t;
 int main() {
-#ifdef LOCAL
-	freopen("in.txt", "r", stdin);
-#endif
-	ios::sync_with_stdio(0);
-	cin.tie(0);
-
-	cin >> n >> m >> S >> T;
-	memset(h, -1, sizeof h);
-
-	while (m--) {
+	scanf("%d%d%d%d", &n, &m, &s, &t);
+	g.init(s, t, n);
+	for (int i = 1; i <= m; i++) {
 		int u, v, w;
-		cin >> u >> v >> w;
-		add(u, v, w);
+		scanf("%d%d%d", &u, &v, &w);
+		g.addedge(u, v, w);
 	}
-
-	cout << dinic() << '\n';
-
-    return 0;
+	printf("%lld\n", g.dinic());
 }
